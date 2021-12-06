@@ -3,6 +3,7 @@ package main
 import (
 	"container/heap"
 	"errors"
+	"flag"
 	"fmt"
 	"image"
 	"image/color"
@@ -12,23 +13,10 @@ import (
 	"os"
 )
 
-// Setup
-// TODO: turn into flags
 var (
-	heuristics       = manhattan
-	allowedDiagonals = false
-	onlyPath         = true
-)
-
-var (
-	adjsBuff   [8]image.Point
-	in         image.Image
-	gif        gifpkg.GIF
-	MaxX, MaxY int
-	orig, dest image.Point
-	global     = map[image.Point]int{}
-	cameFrom   = map[image.Point]image.Point{}
-	passed     = map[image.Point]struct{}{}
+	allowedDiagonals bool
+	includeSteps     bool
+	heuristics       = HeuristicFunc(manhattan)
 )
 
 const (
@@ -44,6 +32,20 @@ var palette = color.Palette{
 	color.RGBA{255, 0, 0, 255},
 	color.RGBA{0, 0, 255, 255},
 }
+
+var (
+	in         image.Image
+	gif        gifpkg.GIF
+	MaxX, MaxY int
+)
+
+var (
+	adjsBuff   [8]image.Point
+	orig, dest image.Point
+	global     = map[image.Point]int{}
+	cameFrom   = map[image.Point]image.Point{}
+	passed     = map[image.Point]struct{}{}
+)
 
 func exitOnError(err error) {
 	fmt.Fprintln(os.Stderr, err)
@@ -119,7 +121,6 @@ func writePathFrame() {
 		}
 	}
 	for p = dest; p != orig; p = cameFrom[p] {
-		fmt.Println(p)
 		frame.SetColorIndex(p.X, p.Y, RedIndex)
 	}
 	frame.SetColorIndex(p.X, p.Y, RedIndex)
@@ -128,11 +129,17 @@ func writePathFrame() {
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	flag.BoolVar(&allowedDiagonals, "d", false, "Allow diagonals")
+	flag.BoolVar(&includeSteps, "s", false, "Write search steps as gif frames")
+	flag.Var(&heuristics, "h", "Heuristics function to use [manhattan|euclidian]")
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) < 1 {
 		exitOnError(errors.New("filename not provided"))
 	}
 
-	file, err := os.Open(os.Args[1])
+	file, err := os.Open(args[0])
 	if err != nil {
 		exitOnError(err)
 	}
@@ -147,8 +154,6 @@ func main() {
 
 	bounds := in.Bounds().Max
 	MaxX, MaxY = bounds.X, bounds.Y
-	/* orig = image.Pt(2, 18)
-	dest = image.Pt(19, 0) */
 	for x := 0; x < MaxX; x++ {
 		if !wallAt(x, 0) {
 			orig = image.Pt(x, 0)
@@ -184,7 +189,7 @@ func main() {
 			global[adj] = gp + 1
 			pq.Push(adj)
 		}
-		if !onlyPath {
+		if includeSteps {
 			writeFrame()
 		}
 		heap.Init(&pq)

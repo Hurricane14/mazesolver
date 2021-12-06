@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"image"
 	"math"
+	"strings"
 )
 
 type HeuristicFunc func(image.Point) float64
@@ -17,4 +19,20 @@ func manhattan(p image.Point) float64 {
 	dx := math.Abs(float64(dest.X - p.X))
 	dy := math.Abs(float64(dest.Y - p.Y))
 	return dx + dy
+}
+
+func (h *HeuristicFunc) String() string {
+	return ""
+}
+
+func (hf *HeuristicFunc) Set(s string) error {
+	s = strings.ToLower(s)
+	if strings.HasPrefix("manhattan", s) {
+		*hf = manhattan
+	} else if strings.HasPrefix("euclidian", s) {
+		*hf = euclidian
+	} else {
+		return errors.New("couldn't parse heuristic function")
+	}
+	return nil
 }

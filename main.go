@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"errors"
 	"flag"
-	"fmt"
 	"image"
 	"image/color"
 	gifpkg "image/gif"
@@ -46,11 +45,6 @@ var (
 	cameFrom   = map[image.Point]image.Point{}
 	passed     = map[image.Point]struct{}{}
 )
-
-func exitOnError(err error) {
-	fmt.Fprintln(os.Stderr, err)
-	os.Exit(-1)
-}
 
 func wallAt(x, y int) bool {
 	r, g, b, _ := in.At(x, y).RGBA()
@@ -136,20 +130,20 @@ func main() {
 
 	args := flag.Args()
 	if len(args) < 1 {
-		exitOnError(errors.New("filename not provided"))
+		panic(errors.New("filename not provided"))
 	}
 
 	file, err := os.Open(args[0])
 	if err != nil {
-		exitOnError(err)
+		panic(err)
 	}
 	in, _, err = image.Decode(file)
 	if err != nil {
-		exitOnError(err)
+		panic(err)
 	}
 	err = file.Close()
 	if err != nil {
-		exitOnError(err)
+		panic(err)
 	}
 
 	bounds := in.Bounds().Max
@@ -198,14 +192,14 @@ func main() {
 
 	file, err = os.Create("out.gif")
 	if err != nil {
-		exitOnError(err)
+		panic(err)
 	}
 	err = gifpkg.EncodeAll(file, &gif)
 	if err != nil {
-		exitOnError(err)
+		panic(err)
 	}
 	err = file.Close()
 	if err != nil {
-		exitOnError(err)
+		panic(err)
 	}
 }

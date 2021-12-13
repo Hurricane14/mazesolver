@@ -1,3 +1,3 @@
-module astar
+module mazesolver
 
 go 1.17

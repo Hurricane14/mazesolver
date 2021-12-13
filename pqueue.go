@@ -13,9 +13,12 @@ func (pq *PriorityQueue) Len() int {
 }
 
 func (pq *PriorityQueue) Less(i, j int) bool {
-	lp, rp := (*pq)[i], (*pq)[j]
-	fi := float64(global[lp]) + heuristics(lp)
-	fj := float64(global[rp]) + heuristics(rp)
+	ip, jp := (*pq)[i], (*pq)[j]
+	fi, fj := float64(global[ip]), float64(global[jp])
+	if !useDijkstra {
+		fi += heuristics(ip)
+		fj += heuristics(jp)
+	}
 	return fi < fj
 }
 

@@ -15,6 +15,7 @@ import (
 var (
 	allowedDiagonals bool
 	includeSteps     bool
+	useDijkstra      bool
 	heuristics       = HeuristicFunc(manhattan)
 )
 
@@ -23,6 +24,8 @@ const (
 	WhiteIndex
 	RedIndex
 	BlueIndex
+	GreenIndex
+	OrangeIndex
 )
 
 var palette = color.Palette{
@@ -30,6 +33,8 @@ var palette = color.Palette{
 	color.RGBA{255, 255, 255, 255},
 	color.RGBA{255, 0, 0, 255},
 	color.RGBA{0, 0, 255, 255},
+	color.RGBA{0, 255, 0, 255},
+	color.RGBA{255, 215, 0, 255},
 }
 
 var (
@@ -98,6 +103,9 @@ func writeFrame() {
 			frame.SetColorIndex(x, y, ind)
 		}
 	}
+	frame.SetColorIndex(orig.X, orig.Y, OrangeIndex)
+	frame.SetColorIndex(dest.X, dest.Y, GreenIndex)
+
 	gif.Image = append(gif.Image, frame)
 	gif.Delay = append(gif.Delay, 10)
 }
@@ -105,11 +113,16 @@ func writeFrame() {
 func writePathFrame() {
 	var p image.Point
 	frame := image.NewPaletted(image.Rect(0, 0, MaxX, MaxY), palette)
+
 	for y := 0; y < MaxY; y++ {
 		for x := 0; x < MaxX; x++ {
 			ind := BlackIndex
 			if !wallAt(x, y) {
 				ind = WhiteIndex
+			}
+			_, ok := passed[image.Pt(x, y)]
+			if ok {
+				ind = BlueIndex
 			}
 			frame.SetColorIndex(x, y, ind)
 		}
@@ -118,6 +131,9 @@ func writePathFrame() {
 		frame.SetColorIndex(p.X, p.Y, RedIndex)
 	}
 	frame.SetColorIndex(p.X, p.Y, RedIndex)
+	frame.SetColorIndex(orig.X, orig.Y, OrangeIndex)
+	frame.SetColorIndex(dest.X, dest.Y, GreenIndex)
+
 	gif.Image = append(gif.Image, frame)
 	gif.Delay = append(gif.Delay, 10)
 }
@@ -125,6 +141,7 @@ func writePathFrame() {
 func main() {
 	flag.BoolVar(&allowedDiagonals, "d", false, "Allow diagonals")
 	flag.BoolVar(&includeSteps, "s", false, "Write search steps as gif frames")
+	flag.BoolVar(&useDijkstra, "D", false, "Use Dijkstra's algorithm instead of A*")
 	flag.Var(&heuristics, "h", "Heuristics function to use [manhattan|euclidian]")
 	flag.Parse()
 

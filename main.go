@@ -37,6 +37,8 @@ var palette = color.Palette{
 	color.RGBA{255, 215, 0, 255},
 }
 
+const frameDelay = 5
+
 var (
 	in         image.Image
 	gif        gifpkg.GIF
@@ -88,7 +90,7 @@ func adjacents(p image.Point) []image.Point {
 	return adjs
 }
 
-func writeFrame() {
+func createFrame() *image.Paletted {
 	frame := image.NewPaletted(image.Rect(0, 0, MaxX, MaxY), palette)
 	for y := 0; y < MaxY; y++ {
 		for x := 0; x < MaxX; x++ {
@@ -105,37 +107,13 @@ func writeFrame() {
 	}
 	frame.SetColorIndex(orig.X, orig.Y, OrangeIndex)
 	frame.SetColorIndex(dest.X, dest.Y, GreenIndex)
-
-	gif.Image = append(gif.Image, frame)
-	gif.Delay = append(gif.Delay, 10)
+	return frame
 }
 
-func writePathFrame() {
-	var p image.Point
-	frame := image.NewPaletted(image.Rect(0, 0, MaxX, MaxY), palette)
-
-	for y := 0; y < MaxY; y++ {
-		for x := 0; x < MaxX; x++ {
-			ind := BlackIndex
-			if !wallAt(x, y) {
-				ind = WhiteIndex
-			}
-			_, ok := passed[image.Pt(x, y)]
-			if ok {
-				ind = BlueIndex
-			}
-			frame.SetColorIndex(x, y, ind)
-		}
-	}
-	for p = dest; p != orig; p = cameFrom[p] {
-		frame.SetColorIndex(p.X, p.Y, RedIndex)
-	}
-	frame.SetColorIndex(p.X, p.Y, RedIndex)
-	frame.SetColorIndex(orig.X, orig.Y, OrangeIndex)
-	frame.SetColorIndex(dest.X, dest.Y, GreenIndex)
-
+func appendFrame() {
+	frame := createFrame()
 	gif.Image = append(gif.Image, frame)
-	gif.Delay = append(gif.Delay, 10)
+	gif.Delay = append(gif.Delay, frameDelay)
 }
 
 func main() {
@@ -190,22 +168,26 @@ func main() {
 		if p == dest {
 			break
 		}
-		gp := global[p]
+		pdist := global[p]
 		for _, adj := range adjacents(p) {
-			g, ok := global[adj]
-			if ok && g <= (gp+1) {
+			adjDist, ok := global[adj]
+			if ok && adjDist <= (pdist+1) {
 				continue
 			}
 			cameFrom[adj] = p
-			global[adj] = gp + 1
+			global[adj] = pdist + 1
 			pq.Push(adj)
 		}
 		if includeSteps {
-			writeFrame()
+			appendFrame()
 		}
 		heap.Init(&pq)
 	}
-	writePathFrame()
+	appendFrame()
+	frame := gif.Image[len(gif.Image)-1]
+	for p := cameFrom[dest]; p != orig; p = cameFrom[p] {
+		frame.SetColorIndex(p.X, p.Y, RedIndex)
+	}
 
 	file, err = os.Create("out.gif")
 	if err != nil {

@@ -2,8 +2,8 @@ package main
 
 import (
 	"container/heap"
-	"errors"
 	"flag"
+	"fmt"
 	"image"
 	"image/color"
 	gifpkg "image/gif"
@@ -117,6 +117,10 @@ func appendFrame() {
 }
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s *input-file*\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.BoolVar(&allowedDiagonals, "d", false, "Allow diagonals")
 	flag.BoolVar(&includeSteps, "s", false, "Write search steps as gif frames")
 	flag.BoolVar(&useDijkstra, "D", false, "Use Dijkstra's algorithm instead of A*")
@@ -125,7 +129,8 @@ func main() {
 
 	fargs := flag.Args()
 	if len(fargs) < 1 {
-		panic(errors.New("filename not provided"))
+		flag.Usage()
+		os.Exit(1)
 	}
 
 	file, err := os.Open(fargs[0])

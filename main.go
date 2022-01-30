@@ -40,7 +40,7 @@ var palette = color.Palette{
 const frameDelay = 5
 
 var (
-	in         image.Image
+	img        image.Image
 	gif        gifpkg.GIF
 	MaxX, MaxY int
 )
@@ -54,7 +54,7 @@ var (
 )
 
 func wallAt(x, y int) bool {
-	r, g, b, _ := in.At(x, y).RGBA()
+	r, g, b, _ := img.At(x, y).RGBA()
 	return r == 0 && g == 0 && b == 0
 }
 
@@ -137,7 +137,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	in, _, err = image.Decode(file)
+	img, _, err = image.Decode(file)
 	if err != nil {
 		panic(err)
 	}
@@ -146,7 +146,7 @@ func main() {
 		panic(err)
 	}
 
-	bounds := in.Bounds().Max
+	bounds := img.Bounds().Max
 	MaxX, MaxY = bounds.X, bounds.Y
 	for x := 0; x < MaxX; x++ {
 		if !wallAt(x, 0) {

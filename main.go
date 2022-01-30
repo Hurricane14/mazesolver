@@ -123,12 +123,12 @@ func main() {
 	flag.Var(&heuristics, "h", "Heuristic function to use [manhattan|euclidian]")
 	flag.Parse()
 
-	args := flag.Args()
-	if len(args) < 1 {
+	fargs := flag.Args()
+	if len(fargs) < 1 {
 		panic(errors.New("filename not provided"))
 	}
 
-	file, err := os.Open(args[0])
+	file, err := os.Open(fargs[0])
 	if err != nil {
 		panic(err)
 	}

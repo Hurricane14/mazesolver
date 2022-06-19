@@ -1,7 +1,6 @@
 package main
 
 import (
-	"container/heap"
 	"flag"
 	"fmt"
 	"image"
@@ -10,6 +9,8 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"os"
+
+	"github.com/x1m3/priorityQueue"
 )
 
 var (
@@ -46,22 +47,37 @@ var (
 )
 
 var (
-	adjsBuff   [8]image.Point
-	orig, dest image.Point
-	global     = map[image.Point]int{}
-	cameFrom   = map[image.Point]image.Point{}
-	passed     = map[image.Point]struct{}{}
+	adjsBuff   [8]Point
+	orig, dest Point
+	global     = map[Point]int{}
+	cameFrom   = map[Point]Point{}
+	passed     = map[Point]bool{}
 )
+
+type Point image.Point
+
+func (p Point) HigherPriorityThan(i priorityQueue.Interface) bool {
+	sp, ok := i.(Point)
+	if !ok {
+		return false
+	}
+	fi, fj := float64(global[p]), float64(global[sp])
+	if !useDijkstra {
+		fi += heuristics(p)
+		fj += heuristics(sp)
+	}
+	return fi < fj
+}
 
 func wallAt(x, y int) bool {
 	r, g, b, _ := img.At(x, y).RGBA()
 	return r == 0 && g == 0 && b == 0
 }
 
-func adjacents(p image.Point) []image.Point {
+func adjacents(p Point) []Point {
 	adjs := adjsBuff[:0]
 	px, py := p.X, p.Y
-	neighbours := []image.Point{
+	neighbours := []Point{
 		{px - 1, py},
 		{px + 1, py},
 		{px, py - 1},
@@ -98,8 +114,7 @@ func createFrame() *image.Paletted {
 			if !wallAt(x, y) {
 				ind = WhiteIndex
 			}
-			_, ok := passed[image.Pt(x, y)]
-			if ok {
+			if passed[Point(image.Pt(x, y))] {
 				ind = BlueIndex
 			}
 			frame.SetColorIndex(x, y, ind)
@@ -150,26 +165,28 @@ func main() {
 	MaxX, MaxY = bounds.X, bounds.Y
 	for x := 0; x < MaxX; x++ {
 		if !wallAt(x, 0) {
-			orig = image.Pt(x, 0)
+			orig = Point(image.Pt(x, 0))
 			break
 		}
 	}
 	for x := 0; x < MaxX; x++ {
 		if !wallAt(x, bounds.Y-1) {
-			dest = image.Pt(x, bounds.Y-1)
+			dest = Point(image.Pt(x, bounds.Y-1))
 			break
 		}
 	}
 
 	gif = gifpkg.GIF{LoopCount: -1}
-
-	var p image.Point
-	pq := PriorityQueue{}
-	pq.Push(orig)
+	pq := priorityQueue.New()
+	pq.Push(Point(orig))
 	global[orig] = 0
-	for pq.Len() != 0 {
-		p = pq.Pop().(image.Point)
-		passed[p] = struct{}{}
+	for {
+		i := pq.Pop()
+		if i == nil {
+			break
+		}
+		p := i.(Point)
+		passed[p] = true
 		if p == dest {
 			break
 		}
@@ -186,7 +203,6 @@ func main() {
 		if includeSteps {
 			appendFrame()
 		}
-		heap.Init(&pq)
 	}
 	appendFrame()
 	frame := gif.Image[len(gif.Image)-1]

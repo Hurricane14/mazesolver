@@ -111,9 +111,9 @@ func createFrame() *image.Paletted {
 	frame := image.NewPaletted(image.Rect(0, 0, MaxX, MaxY), palette)
 	for y := 0; y < MaxY; y++ {
 		for x := 0; x < MaxX; x++ {
-			ind := BlackIndex
-			if !wallAt(x, y) {
-				ind = WhiteIndex
+			ind := WhiteIndex
+			if wallAt(x, y) {
+				ind = BlackIndex
 			}
 			if passed[Point(image.Pt(x, y))] {
 				ind = BlueIndex

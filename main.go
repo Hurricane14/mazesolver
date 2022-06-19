@@ -8,6 +8,7 @@ import (
 	gifpkg "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"log"
 	"os"
 
 	"github.com/x1m3/priorityQueue"
@@ -150,15 +151,15 @@ func main() {
 
 	file, err := os.Open(filename)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	img, _, err = image.Decode(file)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	err = file.Close()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	bounds := img.Bounds().Max
@@ -212,14 +213,14 @@ func main() {
 
 	file, err = os.Create("out.gif")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	err = gifpkg.EncodeAll(file, &gif)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	err = file.Close()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }

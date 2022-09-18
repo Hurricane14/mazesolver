@@ -140,7 +140,7 @@ func main() {
 	flag.BoolVar(&allowedDiagonals, "d", false, "Allow diagonals")
 	flag.BoolVar(&includeSteps, "s", false, "Write search steps as gif frames")
 	flag.BoolVar(&useDijkstra, "D", false, "Use Dijkstra's algorithm instead of A*")
-	flag.Var(&heuristics, "h", "Heuristic function to use [manhattan|euclidian]")
+	flag.Var(&heuristics, "H", "Heuristic function to use [manhattan|euclidian]")
 	flag.Parse()
 
 	if flag.NArg() < 1 {

@@ -31,6 +31,7 @@ func main() {
 
 	var (
 		allowedDiagonals bool
+		paintVisited     bool
 		writeAsGIF       bool
 		useDijkstra      bool
 		heuristics       = HeuristicFunc(manhattan)
@@ -144,10 +145,15 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.BoolVar(&allowedDiagonals, "d", false, "Allow diagonals")
-	flag.BoolVar(&writeAsGIF, "s", false, "Write search as GIF")
+	flag.BoolVar(&paintVisited, "v", false, "Paint visited cells")
+	flag.BoolVar(&writeAsGIF, "s", false, "Write search as GIF (implies -v)")
 	flag.BoolVar(&useDijkstra, "D", false, "Use Dijkstra's algorithm instead of A*")
 	flag.Var(&heuristics, "H", "Heuristic function to use [manhattan|euclidian]")
 	flag.Parse()
+
+	if writeAsGIF {
+		paintVisited = true
+	}
 
 	if flag.NArg() < 1 {
 		flag.Usage()
@@ -197,7 +203,9 @@ func main() {
 	for !pq.Empty() {
 		p, _ := pq.Pop()
 		visited[p] = true
-		frame.SetColorIndex(p.X, p.Y, BlueIndex)
+		if paintVisited {
+			frame.SetColorIndex(p.X, p.Y, BlueIndex)
+		}
 		if writeAsGIF {
 			appendFrame()
 		}

@@ -44,7 +44,7 @@ func main() {
 			color.RGBA{255, 215, 0, 255},
 		}
 
-		img        image.Image
+		input      image.Image
 		gif        gifpkg.GIF
 		MaxX, MaxY int
 
@@ -55,8 +55,36 @@ func main() {
 		visited    = map[Point]bool{}
 	)
 
+	decodeInput := func(filename string) (image.Image, error) {
+		file, err := os.Open(filename)
+		if err != nil {
+			return nil, err
+		}
+		input, _, err = image.Decode(file)
+		if err != nil {
+			return nil, err
+		}
+		err = file.Close()
+		if err != nil {
+			return nil, err
+		}
+		return input, nil
+	}
+
+	encodeSolution := func(filename string) error {
+		file, err := os.Create(filename)
+		if err != nil {
+			return err
+		}
+		err = gifpkg.EncodeAll(file, &gif)
+		if err != nil {
+			return err
+		}
+		return file.Close()
+	}
+
 	wallAt := func(x, y int) bool {
-		r, g, b, _ := img.At(x, y).RGBA()
+		r, g, b, _ := input.At(x, y).RGBA()
 		return r == 0 && g == 0 && b == 0
 	}
 
@@ -131,17 +159,9 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-	filename := flag.Arg(0)
+	ifilename := flag.Arg(0)
 
-	file, err := os.Open(filename)
-	if err != nil {
-		log.Fatal(err)
-	}
-	img, _, err = image.Decode(file)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = file.Close()
+	input, err := decodeInput(ifilename)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -199,16 +219,5 @@ func main() {
 		frame.SetColorIndex(p.X, p.Y, RedIndex)
 	}
 
-	file, err = os.Create("out.gif")
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = gifpkg.EncodeAll(file, &gif)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = file.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
+	encodeSolution("output.gif")
 }

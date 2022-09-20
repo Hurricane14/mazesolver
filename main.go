@@ -7,7 +7,7 @@ import (
 	"image/color"
 	gifpkg "image/gif"
 	_ "image/jpeg"
-	_ "image/png"
+	"image/png"
 	"log"
 	"os"
 
@@ -45,6 +45,7 @@ func main() {
 		}
 
 		input      image.Image
+		frame      *image.Paletted
 		gif        gifpkg.GIF
 		MaxX, MaxY int
 
@@ -71,12 +72,23 @@ func main() {
 		return input, nil
 	}
 
-	encodeSolution := func(filename string) error {
+	encodeSolution := func() error {
+		var filename string
+		if writeAsGIF {
+			filename = "output.gif"
+		} else {
+			filename = "output.png"
+		}
+
 		file, err := os.Create(filename)
 		if err != nil {
 			return err
 		}
-		err = gifpkg.EncodeAll(file, &gif)
+		if writeAsGIF {
+			err = gifpkg.EncodeAll(file, &gif)
+		} else {
+			err = png.Encode(file, frame)
+		}
 		if err != nil {
 			return err
 		}
@@ -120,28 +132,10 @@ func main() {
 		return buff
 	}
 
-	createFrame := func() *image.Paletted {
-		frame := image.NewPaletted(image.Rect(0, 0, MaxX, MaxY), palette)
-		for y := 0; y < MaxY; y++ {
-			for x := 0; x < MaxX; x++ {
-				ind := WhiteIndex
-				if wallAt(x, y) {
-					ind = BlackIndex
-				}
-				if visited[Point(image.Pt(x, y))] {
-					ind = BlueIndex
-				}
-				frame.SetColorIndex(x, y, ind)
-			}
-		}
-		frame.SetColorIndex(orig.X, orig.Y, OrangeIndex)
-		frame.SetColorIndex(dest.X, dest.Y, GreenIndex)
-		return frame
-	}
-
 	appendFrame := func() {
-		frame := createFrame()
-		gif.Image = append(gif.Image, frame)
+		new := image.NewPaletted(frame.Bounds(), frame.Palette)
+		copy(new.Pix, frame.Pix)
+		gif.Image = append(gif.Image, new)
 		gif.Delay = append(gif.Delay, frameDelay)
 	}
 
@@ -181,6 +175,13 @@ func main() {
 		}
 	}
 
+	frame = image.NewPaletted(input.Bounds(), palette)
+	for y := 0; y < MaxY; y++ {
+		for x := 0; x < MaxX; x++ {
+			frame.Set(x, y, input.At(x, y))
+		}
+	}
+
 	gif = gifpkg.GIF{LoopCount: -1}
 	pq := pqueue.New(func(p1, p2 Point) bool {
 		d1, d2 := float64(distances[p1]), float64(distances[p2])
@@ -196,6 +197,10 @@ func main() {
 	for !pq.Empty() {
 		p, _ := pq.Pop()
 		visited[p] = true
+		frame.SetColorIndex(p.X, p.Y, BlueIndex)
+		if writeAsGIF {
+			appendFrame()
+		}
 		if p == dest {
 			break
 		}
@@ -209,15 +214,15 @@ func main() {
 			distances[adj] = dist + 1
 			pq.Push(adj)
 		}
-		if writeAsGIF {
-			appendFrame()
-		}
 	}
-	appendFrame()
-	frame := gif.Image[len(gif.Image)-1]
-	for p := cameFrom[dest]; p != orig; p = cameFrom[p] {
+	for p := dest; p != orig; p = cameFrom[p] {
 		frame.SetColorIndex(p.X, p.Y, RedIndex)
 	}
+	if writeAsGIF {
+		appendFrame()
+	}
 
-	encodeSolution("output.gif")
+	if err := encodeSolution(); err != nil {
+		log.Fatal(err)
+	}
 }

@@ -14,112 +14,109 @@ import (
 	"mazesolver/pqueue"
 )
 
-var (
-	allowedDiagonals bool
-	writeAsGIF       bool
-	useDijkstra      bool
-	heuristics       = HeuristicFunc(manhattan)
-)
-
-const (
-	BlackIndex uint8 = iota
-	WhiteIndex
-	RedIndex
-	BlueIndex
-	GreenIndex
-	OrangeIndex
-)
-
-var palette = color.Palette{
-	color.RGBA{0, 0, 0, 255},
-	color.RGBA{255, 255, 255, 255},
-	color.RGBA{255, 0, 0, 255},
-	color.RGBA{0, 0, 255, 255},
-	color.RGBA{0, 255, 0, 255},
-	color.RGBA{255, 215, 0, 255},
-}
-
-const frameDelay = 5
-
-var (
-	img        image.Image
-	gif        gifpkg.GIF
-	MaxX, MaxY int
-)
-
 type Point image.Point
 
-var (
-	adjsBuff   [8]Point
-	orig, dest Point
-	global     = map[Point]int{}
-	cameFrom   = map[Point]Point{}
-	passed     = map[Point]bool{}
-)
-
-func wallAt(x, y int) bool {
-	r, g, b, _ := img.At(x, y).RGBA()
-	return r == 0 && g == 0 && b == 0
-}
-
-func adjacents(p Point) []Point {
-	adjs := adjsBuff[:0]
-	px, py := p.X, p.Y
-	neighbours := []Point{
-		{px - 1, py},
-		{px + 1, py},
-		{px, py - 1},
-		{px, py + 1},
-		{px - 1, py - 1},
-		{px + 1, py - 1},
-		{px + 1, py + 1},
-		{px - 1, py + 1},
-	}
-	if !allowedDiagonals {
-		neighbours = neighbours[:4]
-	}
-
-	for _, n := range neighbours {
-		if n.X < 0 || n.X == MaxX {
-			continue
-		}
-		if n.Y < 0 || n.Y == MaxY {
-			continue
-		}
-		if wallAt(n.X, n.Y) {
-			continue
-		}
-		adjs = append(adjs, n)
-	}
-	return adjs
-}
-
-func createFrame() *image.Paletted {
-	frame := image.NewPaletted(image.Rect(0, 0, MaxX, MaxY), palette)
-	for y := 0; y < MaxY; y++ {
-		for x := 0; x < MaxX; x++ {
-			ind := WhiteIndex
-			if wallAt(x, y) {
-				ind = BlackIndex
-			}
-			if passed[Point(image.Pt(x, y))] {
-				ind = BlueIndex
-			}
-			frame.SetColorIndex(x, y, ind)
-		}
-	}
-	frame.SetColorIndex(orig.X, orig.Y, OrangeIndex)
-	frame.SetColorIndex(dest.X, dest.Y, GreenIndex)
-	return frame
-}
-
-func appendFrame() {
-	frame := createFrame()
-	gif.Image = append(gif.Image, frame)
-	gif.Delay = append(gif.Delay, frameDelay)
-}
-
 func main() {
+
+	const (
+		BlackIndex uint8 = iota
+		WhiteIndex
+		RedIndex
+		BlueIndex
+		GreenIndex
+		OrangeIndex
+
+		frameDelay = 5
+	)
+
+	var (
+		allowedDiagonals bool
+		writeAsGIF       bool
+		useDijkstra      bool
+		heuristics       = HeuristicFunc(manhattan)
+
+		palette = color.Palette{
+			color.RGBA{0, 0, 0, 255},
+			color.RGBA{255, 255, 255, 255},
+			color.RGBA{255, 0, 0, 255},
+			color.RGBA{0, 0, 255, 255},
+			color.RGBA{0, 255, 0, 255},
+			color.RGBA{255, 215, 0, 255},
+		}
+
+		img        image.Image
+		gif        gifpkg.GIF
+		MaxX, MaxY int
+
+		adjsBuff   [8]Point
+		orig, dest Point
+		distances  = map[Point]int{}
+		cameFrom   = map[Point]Point{}
+		visited    = map[Point]bool{}
+	)
+
+	wallAt := func(x, y int) bool {
+		r, g, b, _ := img.At(x, y).RGBA()
+		return r == 0 && g == 0 && b == 0
+	}
+
+	adjacents := func(p Point) []Point {
+		buff := adjsBuff[:0]
+		px, py := p.X, p.Y
+		adjacents := []Point{
+			{px - 1, py},
+			{px + 1, py},
+			{px, py - 1},
+			{px, py + 1},
+			{px - 1, py - 1},
+			{px + 1, py - 1},
+			{px + 1, py + 1},
+			{px - 1, py + 1},
+		}
+		if !allowedDiagonals {
+			adjacents = adjacents[:4]
+		}
+
+		for _, adj := range adjacents {
+			if adj.X < 0 || adj.X == MaxX {
+				continue
+			}
+			if adj.Y < 0 || adj.Y == MaxY {
+				continue
+			}
+			if wallAt(adj.X, adj.Y) {
+				continue
+			}
+			buff = append(buff, adj)
+		}
+		return buff
+	}
+
+	createFrame := func() *image.Paletted {
+		frame := image.NewPaletted(image.Rect(0, 0, MaxX, MaxY), palette)
+		for y := 0; y < MaxY; y++ {
+			for x := 0; x < MaxX; x++ {
+				ind := WhiteIndex
+				if wallAt(x, y) {
+					ind = BlackIndex
+				}
+				if visited[Point(image.Pt(x, y))] {
+					ind = BlueIndex
+				}
+				frame.SetColorIndex(x, y, ind)
+			}
+		}
+		frame.SetColorIndex(orig.X, orig.Y, OrangeIndex)
+		frame.SetColorIndex(dest.X, dest.Y, GreenIndex)
+		return frame
+	}
+
+	appendFrame := func() {
+		frame := createFrame()
+		gif.Image = append(gif.Image, frame)
+		gif.Delay = append(gif.Delay, frameDelay)
+	}
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s *input-file*\n", os.Args[0])
 		flag.PrintDefaults()
@@ -149,7 +146,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	bounds := img.Bounds().Max
+	bounds := input.Bounds().Max
 	MaxX, MaxY = bounds.X, bounds.Y
 	for x := 0; x < MaxX; x++ {
 		if !wallAt(x, 0) {
@@ -158,37 +155,38 @@ func main() {
 		}
 	}
 	for x := 0; x < MaxX; x++ {
-		if !wallAt(x, bounds.Y-1) {
-			dest = Point(image.Pt(x, bounds.Y-1))
+		if !wallAt(x, MaxY-1) {
+			dest = Point(image.Pt(x, MaxY-1))
 			break
 		}
 	}
 
 	gif = gifpkg.GIF{LoopCount: -1}
 	pq := pqueue.New(func(p1, p2 Point) bool {
-		fi, fj := float64(global[p1]), float64(global[p2])
+		d1, d2 := float64(distances[p1]), float64(distances[p2])
 		if !useDijkstra {
-			fi += heuristics(p1)
-			fj += heuristics(p2)
+			d1 += heuristics(dest, p1)
+			d2 += heuristics(dest, p2)
 		}
-		return fi < fj
+		return d1 < d2
 	})
+
+	distances[orig] = 0
 	pq.Push(Point(orig))
-	global[orig] = 0
 	for !pq.Empty() {
 		p, _ := pq.Pop()
-		passed[p] = true
+		visited[p] = true
 		if p == dest {
 			break
 		}
-		pdist := global[p]
+		dist := distances[p]
 		for _, adj := range adjacents(p) {
-			adjDist, ok := global[adj]
-			if ok && adjDist <= (pdist+1) {
+			adjDist, ok := distances[adj]
+			if ok && adjDist <= (dist+1) {
 				continue
 			}
 			cameFrom[adj] = p
-			global[adj] = pdist + 1
+			distances[adj] = dist + 1
 			pq.Push(adj)
 		}
 		if writeAsGIF {

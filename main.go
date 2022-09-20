@@ -16,7 +16,7 @@ import (
 
 var (
 	allowedDiagonals bool
-	includeSteps     bool
+	writeAsGIF       bool
 	useDijkstra      bool
 	heuristics       = HeuristicFunc(manhattan)
 )
@@ -138,7 +138,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.BoolVar(&allowedDiagonals, "d", false, "Allow diagonals")
-	flag.BoolVar(&includeSteps, "s", false, "Write search steps as gif frames")
+	flag.BoolVar(&writeAsGIF, "s", false, "Write search as GIF")
 	flag.BoolVar(&useDijkstra, "D", false, "Use Dijkstra's algorithm instead of A*")
 	flag.Var(&heuristics, "H", "Heuristic function to use [manhattan|euclidian]")
 	flag.Parse()
@@ -201,7 +201,7 @@ func main() {
 			global[adj] = pdist + 1
 			pq.Push(adj)
 		}
-		if includeSteps {
+		if writeAsGIF {
 			appendFrame()
 		}
 	}

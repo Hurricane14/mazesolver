@@ -11,7 +11,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/x1m3/priorityQueue"
+	"mazesolver/pqueue"
 )
 
 var (
@@ -47,6 +47,8 @@ var (
 	MaxX, MaxY int
 )
 
+type Point image.Point
+
 var (
 	adjsBuff   [8]Point
 	orig, dest Point
@@ -54,21 +56,6 @@ var (
 	cameFrom   = map[Point]Point{}
 	passed     = map[Point]bool{}
 )
-
-type Point image.Point
-
-func (p Point) HigherPriorityThan(i priorityQueue.Interface) bool {
-	sp, ok := i.(Point)
-	if !ok {
-		return false
-	}
-	fi, fj := float64(global[p]), float64(global[sp])
-	if !useDijkstra {
-		fi += heuristics(p)
-		fj += heuristics(sp)
-	}
-	return fi < fj
-}
 
 func wallAt(x, y int) bool {
 	r, g, b, _ := img.At(x, y).RGBA()
@@ -178,15 +165,18 @@ func main() {
 	}
 
 	gif = gifpkg.GIF{LoopCount: -1}
-	pq := priorityQueue.New()
+	pq := pqueue.New(func(p1, p2 Point) bool {
+		fi, fj := float64(global[p1]), float64(global[p2])
+		if !useDijkstra {
+			fi += heuristics(p1)
+			fj += heuristics(p2)
+		}
+		return fi < fj
+	})
 	pq.Push(Point(orig))
 	global[orig] = 0
-	for {
-		i := pq.Pop()
-		if i == nil {
-			break
-		}
-		p := i.(Point)
+	for !pq.Empty() {
+		p, _ := pq.Pop()
 		passed[p] = true
 		if p == dest {
 			break

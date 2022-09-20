@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"log"
 	"os"
+	"strings"
 
 	"mazesolver/pqueue"
 )
@@ -17,7 +18,6 @@ import (
 type Point image.Point
 
 func main() {
-
 	const (
 		BlackIndex uint8 = iota
 		WhiteIndex
@@ -30,13 +30,17 @@ func main() {
 	)
 
 	var (
-		allowedDiagonals bool
-		paintVisited     bool
-		writeAsGIF       bool
-		useDijkstra      bool
-		inputFile        string
-		outputFile       string
-		heuristics       = HeuristicFunc(manhattan)
+		allowedDiagonals = flag.Bool("d", false, "Allow diagonals")
+		paintVisited     = flag.Bool("v", false, "Paint visited cells")
+		writeAsGIF       = flag.Bool("s", false, "Write search as GIF (implies -v)")
+		useDijkstra      = flag.Bool("D", false, "Use Dijkstra's algorithm instead of A*")
+		inputFile        = flag.String("i", "input.png", "Input file")
+		outputFile       = flag.String("o", "output.png", "Output file")
+		heuristics       = flag.String(
+			"H",
+			"manhattan",
+			"Heuristic function to use [manhattan|euclidian]",
+		)
 
 		palette = color.Palette{
 			color.RGBA{0, 0, 0, 255},
@@ -54,6 +58,7 @@ func main() {
 
 		adjsBuff   [8]Point
 		orig, dest Point
+		heuristic  = HeuristicFunc(manhattan)
 		distances  = map[Point]int{}
 		cameFrom   = map[Point]Point{}
 		visited    = map[Point]bool{}
@@ -80,7 +85,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		if writeAsGIF {
+		if *writeAsGIF {
 			err = gifpkg.EncodeAll(file, &gif)
 		} else {
 			err = png.Encode(file, frame)
@@ -109,7 +114,7 @@ func main() {
 			{px + 1, py + 1},
 			{px - 1, py + 1},
 		}
-		if !allowedDiagonals {
+		if !*allowedDiagonals {
 			adjacents = adjacents[:4]
 		}
 
@@ -139,23 +144,25 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage: %s *input-file*\n", os.Args[0])
 		flag.PrintDefaults()
 	}
-	flag.BoolVar(&allowedDiagonals, "d", false, "Allow diagonals")
-	flag.BoolVar(&paintVisited, "v", false, "Paint visited cells")
-	flag.BoolVar(&writeAsGIF, "s", false, "Write search as GIF (implies -v)")
-	flag.BoolVar(&useDijkstra, "D", false, "Use Dijkstra's algorithm instead of A*")
-	flag.StringVar(&inputFile, "i", "input.png", "Input file")
-	flag.StringVar(&outputFile, "o", "output.png", "Output file")
-	flag.Var(&heuristics, "H", "Heuristic function to use [manhattan|euclidian]")
 	flag.Parse()
 
-	if writeAsGIF {
-		if outputFile == "output.png" {
-			outputFile = "output.gif"
-		}
-		paintVisited = true
+	*heuristics = strings.ToLower(*heuristics)
+	if strings.HasPrefix("manhattan", *heuristics) {
+		heuristic = manhattan
+	} else if strings.HasPrefix("euclidian", *heuristics) {
+		heuristic = euclidian
+	} else {
+		log.Fatal("Unknown heuristics")
 	}
 
-	input, err := decodeInput(inputFile)
+	if *writeAsGIF {
+		if *outputFile == "output.png" {
+			*outputFile = "output.gif"
+		}
+		*paintVisited = true
+	}
+
+	input, err := decodeInput(*inputFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -185,9 +192,9 @@ func main() {
 	gif = gifpkg.GIF{LoopCount: -1}
 	pq := pqueue.New(func(p1, p2 Point) bool {
 		d1, d2 := float64(distances[p1]), float64(distances[p2])
-		if !useDijkstra {
-			d1 += heuristics(dest, p1)
-			d2 += heuristics(dest, p2)
+		if !*useDijkstra {
+			d1 += heuristic(dest, p1)
+			d2 += heuristic(dest, p2)
 		}
 		return d1 < d2
 	})
@@ -197,10 +204,10 @@ func main() {
 	for !pq.Empty() {
 		p, _ := pq.Pop()
 		visited[p] = true
-		if paintVisited {
+		if *paintVisited {
 			frame.SetColorIndex(p.X, p.Y, BlueIndex)
 		}
-		if writeAsGIF {
+		if *writeAsGIF {
 			appendFrame()
 		}
 		if p == dest {
@@ -220,11 +227,11 @@ func main() {
 	for p := dest; p != orig; p = cameFrom[p] {
 		frame.SetColorIndex(p.X, p.Y, RedIndex)
 	}
-	if writeAsGIF {
+	if *writeAsGIF {
 		appendFrame()
 	}
 
-	if err := encodeSolution(outputFile); err != nil {
+	if err := encodeSolution(*outputFile); err != nil {
 		log.Fatal(err)
 	}
 }

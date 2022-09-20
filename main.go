@@ -34,6 +34,8 @@ func main() {
 		paintVisited     bool
 		writeAsGIF       bool
 		useDijkstra      bool
+		inputFile        string
+		outputFile       string
 		heuristics       = HeuristicFunc(manhattan)
 
 		palette = color.Palette{
@@ -73,14 +75,7 @@ func main() {
 		return input, nil
 	}
 
-	encodeSolution := func() error {
-		var filename string
-		if writeAsGIF {
-			filename = "output.gif"
-		} else {
-			filename = "output.png"
-		}
-
+	encodeSolution := func(filename string) error {
 		file, err := os.Create(filename)
 		if err != nil {
 			return err
@@ -148,20 +143,19 @@ func main() {
 	flag.BoolVar(&paintVisited, "v", false, "Paint visited cells")
 	flag.BoolVar(&writeAsGIF, "s", false, "Write search as GIF (implies -v)")
 	flag.BoolVar(&useDijkstra, "D", false, "Use Dijkstra's algorithm instead of A*")
+	flag.StringVar(&inputFile, "i", "input.png", "Input file")
+	flag.StringVar(&outputFile, "o", "output.png", "Output file")
 	flag.Var(&heuristics, "H", "Heuristic function to use [manhattan|euclidian]")
 	flag.Parse()
 
 	if writeAsGIF {
+		if outputFile == "output.png" {
+			outputFile = "output.gif"
+		}
 		paintVisited = true
 	}
 
-	if flag.NArg() < 1 {
-		flag.Usage()
-		os.Exit(1)
-	}
-	ifilename := flag.Arg(0)
-
-	input, err := decodeInput(ifilename)
+	input, err := decodeInput(inputFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -230,7 +224,7 @@ func main() {
 		appendFrame()
 	}
 
-	if err := encodeSolution(); err != nil {
+	if err := encodeSolution(outputFile); err != nil {
 		log.Fatal(err)
 	}
 }

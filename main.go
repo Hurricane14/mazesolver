@@ -227,6 +227,7 @@ func main() {
 	for p := dest; p != orig; p = cameFrom[p] {
 		frame.SetColorIndex(p.X, p.Y, RedIndex)
 	}
+	frame.SetColorIndex(orig.X, orig.Y, RedIndex)
 	if *writeAsGIF {
 		appendFrame()
 	}
